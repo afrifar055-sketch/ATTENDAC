@@ -2,7 +2,7 @@
 {% block content %}
 <h1>Dashboard</h1><p class="sub">{{ month_label }} overview</p>
 {% if msg %}<div class="alert">{{ msg }}</div>{% endif %}
-{% if not active %}<div class="alert bad"><b>No register for {{ month_label }}.</b> Upload your class sheet below to start marking in Excel.</div>{% endif %}
+{% if not active %}<div class="alert bad"><b>No register for {{ month_label }}.</b> Upload your staff list below to start marking in Excel.</div>{% endif %}
 <div class="grid stats">
 <div class="card stat"><span>Enrolled</span><b>{{ studs|length }}</b></div>
 <div class="card stat ok"><span>Present · {{ date }}</span><b>{{ rows|length }}</b></div>
@@ -15,17 +15,17 @@
 <input type="month" name="month" value="{{ ym }}" required>
 <label><input type="checkbox" name="replace"> Replace if it exists</label><br>
 <button>Create register</button></form>
-<p class="sub" style="margin:12px 0 0;font-size:13px">Header row needs Name and Student ID. Every day becomes a dated column (P = present, A = absent).</p></div>
+<p class="sub" style="margin:12px 0 0;font-size:13px">Header row needs Name and Staff ID. Every day becomes a dated column (P = present, A = absent).</p></div>
 <div class="card"><h2>Registers</h2>
 {% for f in regs %}<a class="btn ghost sm" href="/register/{{ f }}" style="margin:0 6px 6px 0">⬇ {{ f }}</a>{% else %}<p class="sub">None yet.</p>{% endfor %}
 <p style="margin:12px 0 0"><a class="btn ghost sm" href="/export">⬇ Full attendance log</a></p></div></div>
 <div class="card"><h2>Attendance</h2>
 <form><input type="date" name="date" value="{{ date }}"><button class="sm">View</button></form>
-<div class="wrap"><table><tr><th>Name</th><th>Student ID</th><th>Time</th><th>Status</th></tr>
+<div class="wrap"><table><tr><th>Name</th><th>Staff ID</th><th>Time</th><th>Status</th></tr>
 {% for r in rows %}<tr><td>{{ r[0] }}</td><td>{{ r[1] }}</td><td>{{ r[2] }}</td><td><span class="chip">Present</span></td></tr>
 {% else %}<tr><td colspan="4" class="sub">No attendance recorded for this date.</td></tr>{% endfor %}</table></div></div>
-<div class="card"><h2>Enrolled students</h2><div class="wrap"><table>
-<tr><th>Name</th><th>Student ID</th><th>Face samples</th><th></th></tr>
+<div class="card"><h2>Enrolled staff</h2><div class="wrap"><table>
+<tr><th>Name</th><th>Staff ID</th><th>Face samples</th><th></th></tr>
 {% for s in studs %}<tr><td>{{ s[0] }}</td><td>{{ s[1] }}</td>
 <td><span class="chip {{ '' if s[2] >= 3 else 'bad' }}">{{ s[2] }}/3</span></td>
 <td><form method="post" action="/delete/{{ s[1] }}" onsubmit="return confirm('Remove {{ s[0] }}?')">

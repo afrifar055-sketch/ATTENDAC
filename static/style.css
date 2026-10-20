@@ -34,3 +34,5 @@ input:focus{outline:2px solid var(--brand);border-color:transparent}
 .login{min-height:100vh;display:grid;place-items:center;padding:20px}.login .card{width:100%;max-width:380px}
 @media(max-width:800px){.shell{flex-direction:column}.side{width:100%;height:auto;position:static;flex-direction:row;flex-wrap:wrap;padding:10px;gap:4px}
 .brand{padding:6px 10px}.side .out{margin:0 0 0 auto}.main{padding:16px}.two{grid-template-columns:1fr}}
+.alert.ok{background:#16a34a22;color:var(--ok);border-color:#16a34a44}
+.code{font:700 24px ui-monospace,Consolas,monospace;letter-spacing:.1em;padding:12px 0}

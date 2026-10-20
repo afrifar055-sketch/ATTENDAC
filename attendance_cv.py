@@ -104,7 +104,7 @@ def enroll(name, student_id):
     detector, recognizer = load_models(w, h)
     detector.setInputSize((w, h))
 
-    # Re-enrolling replaces old samples for this student
+    # Re-enrolling replaces old samples for this staff member
     con.execute("DELETE FROM samples WHERE student_id = ?", (student_id,))
     con.execute("INSERT OR REPLACE INTO students VALUES (?,?)", (student_id, name))
     con.commit()
@@ -191,7 +191,7 @@ def log_to_excel(name, student_id, now):
             wb = Workbook()
             ws = wb.active
             ws.title = "Attendance"
-            ws.append(["Name", "Student ID", "Date", "Time", "Status"])
+            ws.append(["Name", "Staff ID", "Date", "Time", "Status"])
             for col, width in zip("ABCDE", (25, 15, 14, 12, 10)):
                 ws.column_dimensions[col].width = width
         ws.append([name, student_id, now.strftime("%Y-%m-%d"),
@@ -204,7 +204,7 @@ def run():
     con = db()
     names, ids, feats = load_known(con)
     if not feats:
-        sys.exit('No students enrolled. Run: python attendance_cv.py enroll "NAME" "ID"')
+        sys.exit('No staff enrolled. Run: python attendance_cv.py enroll "NAME" "ID"')
     cap, w, h = open_camera()
     detector, recognizer = load_models(w, h)
     detector.setInputSize((w, h))
@@ -267,7 +267,7 @@ def export():
     out = Path(f"attendance_{today}.csv")
     with out.open("w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["Name", "Student ID", "Date", "Time"])
+        w.writerow(["Name", "Staff ID", "Date", "Time"])
         w.writerows(rows)
     print(f"Saved {len(rows)} records to {out}")
 
@@ -292,9 +292,9 @@ def list_students():
            FROM students s LEFT JOIN samples p ON p.student_id = s.student_id
            GROUP BY s.student_id ORDER BY s.name""").fetchall()
     if not rows:
-        print("No students enrolled yet.")
+        print("No staff enrolled yet.")
         return
-    print(f"{'Name':<25}{'Student ID':<15}Samples")
+    print(f"{'Name':<25}{'Staff ID':<15}Samples")
     for name, sid, n in rows:
         print(f"{name:<25}{sid:<15}{n}")
     print(f"\nTotal: {len(rows)}")

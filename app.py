@@ -72,7 +72,7 @@ def create_register(year, month, students):
     wb = Workbook()
     ws = wb.active
     ws.title = f"{calendar.month_name[month]} {year}"
-    ws.append(["Name", "Student ID"] + [date(year, month, d) for d in range(1, ndays + 1)]
+    ws.append(["Name", "Staff ID"] + [date(year, month, d) for d in range(1, ndays + 1)]
               + ["Total"])
     for c in range(3, 3 + ndays):
         ws.cell(1, c).number_format = "ddd d-mmm"
@@ -368,15 +368,15 @@ def register_upload():
         students = read_students(request.files["file"])
     except Exception:
         return redirect(url_for("dashboard", msg="Could not read that file. Use an .xlsx "
-                                "with Name and Student ID columns."))
+                                "with Name and Staff ID columns."))
     path = reg_path(year, month)
     if not students:
-        msg = "No students found in that sheet."
+        msg = "No staff found in that sheet."
     elif path.exists() and not request.form.get("replace"):
         msg = f"A register for {year}-{month:02d} already exists. Tick 'replace' to overwrite it."
     else:
         create_register(year, month, students)
-        msg = f"Register for {year}-{month:02d} created with {len(students)} students."
+        msg = f"Register for {year}-{month:02d} created for {len(students)} staff."
     return redirect(url_for("dashboard", msg=msg))
 
 
@@ -407,7 +407,7 @@ def api_enroll():
     d = request.json
     name, sid = d.get("name", "").strip(), d.get("sid", "").strip()
     if not name or not sid:
-        return jsonify(ok=False, msg="Name and student ID are required.")
+        return jsonify(ok=False, msg="Name and staff ID are required.")
     img = decode(d["image"])
     with lock:
         faces = detect(img)

@@ -1,15 +1,15 @@
 # FaceAttend - Face Recognition Attendance System
 
 A face recognition attendance system built with Python, OpenCV and Flask.
-It recognizes students from a camera, marks them present, and keeps a monthly
+It recognizes bank staff from a camera, marks them present, and keeps a monthly
 Excel register with a dated column for every day.
 
 ## Features
 - Face detection and recognition with OpenCV (YuNet + SFace). No dlib needed.
-- Web app with lecturer login, change password and forgot password (recovery code).
-- Enroll students from the browser (3 photos each).
+- Web app with admin login, change password and forgot password (recovery code).
+- Enroll staff members from the browser (3 photos each).
 - Live attendance page: green = present, orange = already marked, red = unknown.
-- Monthly Excel register: upload a class sheet, each day gets a dated column
+- Monthly Excel register: upload a staff list, each day gets a dated column
   (P = present, A = absent) and a Total column. Upload a new sheet each month.
 - Desktop version (`attendance_cv.py`) that works from the terminal.
 
@@ -32,15 +32,15 @@ Forgot the password? Use the recovery code on the login page, or run
 
 ## Run the desktop version
 ```
-python attendance_cv.py enroll "Full Name" "StudentID"
+python attendance_cv.py enroll "Full Name" "StaffID"
 python attendance_cv.py run
 python attendance_cv.py list
-python attendance_cv.py remove StudentID
+python attendance_cv.py remove StaffID
 python attendance_cv.py export
 ```
 
-## Class sheet format
-An .xlsx file with a header row containing **Name** and **Student ID** columns.
+## Staff list format
+An .xlsx file with a header row containing **Name** and **Staff ID** columns.
 
 ## Project structure
 ```
@@ -51,5 +51,5 @@ static/             style.css and camera.js
 ```
 
 ## Privacy
-The database, captured photos and registers contain students' personal data.
+The database, captured photos and registers contain staff members' personal data.
 They are excluded by `.gitignore`. Do not upload them to a public repository.

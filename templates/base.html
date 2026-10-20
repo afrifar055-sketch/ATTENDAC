@@ -5,7 +5,7 @@
 {% if session.ok %}<div class="shell"><nav class="side"><div class="brand">Face<span>Attend</span></div>
 <a href="/" class="{{ 'on' if request.path == '/' }}">📊 Dashboard</a>
 <a href="/attend" class="{{ 'on' if request.path == '/attend' }}">📷 Take attendance</a>
-<a href="/enroll" class="{{ 'on' if request.path == '/enroll' }}">➕ Enroll student</a>
+<a href="/enroll" class="{{ 'on' if request.path == '/enroll' }}">➕ Enroll staff</a>
 <a href="/account" class="{{ 'on' if request.path == '/account' }}">🔑 Account</a>
 <a href="/logout" class="out">Log out</a></nav>
 <main class="main">{% block content %}{% endblock %}</main></div>
