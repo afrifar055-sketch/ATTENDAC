@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editor
+.idea/
+.vscode/
+
+# Private data - never upload
+*.db
+captures/
+registers/
+*.xlsx
+*.csv
+
+# Downloaded models (re-downloaded automatically)
+models/

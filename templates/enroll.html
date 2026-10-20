@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% block title %}Enroll · FaceAttend{% endblock %}
+{% block content %}<h1>Enroll a student</h1><p class="sub">Capture 3 photos, varying angle and lighting slightly.</p>
+<div class="two"><div class="card"><h2>Details</h2>
+<input id="name" placeholder="Full name" style="width:100%"><input id="sid" placeholder="Student ID" style="width:100%">
+<div class="steps" id="steps"><i></i><i></i><i></i></div>
+<button id="btn">Capture photo 1 of 3</button><div id="out">Fill in the details, then capture.</div></div>
+<div class="card"><div class="cam"><video id="v" autoplay playsinline muted></video></div></div></div>{% endblock %}
+{% block scripts %}<script>
+let n=0;const dots=document.querySelectorAll('#steps i'),btn=document.getElementById('btn');startCam(()=>{});
+btn.onclick=async()=>{
+ const name=document.getElementById('name').value.trim(),sid=document.getElementById('sid').value.trim();
+ if(!name||!sid){say('Enter the name and student ID first.','unknown');return}
+ const d=await post('/api/enroll',{name:name,sid:sid,n:n,image:snap()});
+ if(!d.ok){say(d.msg,'unknown');return}
+ dots[n].classList.add('on');n++;
+ if(n==3){say('Enrolled '+name+'. Done!','present');n=0;btn.textContent='Capture photo 1 of 3';
+  setTimeout(()=>dots.forEach(x=>x.classList.remove('on')),2500)}
+ else{say(d.msg,'present');btn.textContent='Capture photo '+(n+1)+' of 3'}};
+</script>{% endblock %}

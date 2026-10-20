@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% block title %}Take attendance · FaceAttend{% endblock %}
+{% block content %}<h1>Take attendance</h1><p class="sub">Students look at the camera one at a time.</p>
+<div class="two"><div class="card"><div class="cam" id="cam"><video id="v" autoplay playsinline muted></video></div>
+<div id="out">Starting camera…</div></div>
+<div class="card"><h2>Marked this session</h2><ul class="log" id="log"></ul></div></div>{% endblock %}
+{% block scripts %}<script>
+const cam=document.getElementById('cam');let busy=false;
+startCam(()=>setInterval(async()=>{
+ if(busy||!v.videoWidth)return;busy=true;
+ try{const d=await post('/api/recognize',{image:snap()});say(d.msg,d.status);cam.className='cam '+d.status;
+  if(d.status=='present'){const li=document.createElement('li');
+   li.textContent=d.msg+' · '+new Date().toLocaleTimeString();document.getElementById('log').prepend(li)}}
+ catch(e){say('Server error','unknown')}
+ busy=false},1200));
+</script>{% endblock %}

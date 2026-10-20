@@ -1,0 +1,14 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}FaceAttend{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head><body>
+{% if session.ok %}<div class="shell"><nav class="side"><div class="brand">Face<span>Attend</span></div>
+<a href="/" class="{{ 'on' if request.path == '/' }}">📊 Dashboard</a>
+<a href="/attend" class="{{ 'on' if request.path == '/attend' }}">📷 Take attendance</a>
+<a href="/enroll" class="{{ 'on' if request.path == '/enroll' }}">➕ Enroll student</a>
+<a href="/account" class="{{ 'on' if request.path == '/account' }}">🔑 Account</a>
+<a href="/logout" class="out">Log out</a></nav>
+<main class="main">{% block content %}{% endblock %}</main></div>
+{% else %}{% block bare %}{% endblock %}{% endif %}
+<script src="{{ url_for('static', filename='camera.js') }}"></script>
+{% block scripts %}{% endblock %}</body></html>

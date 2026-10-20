@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% block title %}Account · FaceAttend{% endblock %}
+{% block content %}<h1>Account</h1><p class="sub">Change your password or recovery code.</p>
+{% if msg %}<div class="alert ok">{{ msg }}</div>{% endif %}
+{% if err %}<div class="alert bad">{{ err }}</div>{% endif %}
+{% if code %}<div class="card"><h2>Your recovery code</h2><div class="code">{{ code }}</div>
+<p class="sub" style="margin:0">Write it down now. It is shown only once and works one time to reset a forgotten password.</p></div>{% endif %}
+<div class="two"><div class="card"><h2>Change password</h2><form method="post">
+<input type="password" name="current" placeholder="Current password" required style="width:100%">
+<input type="password" name="new" placeholder="New password (min 8 characters)" required style="width:100%">
+<input type="password" name="confirm" placeholder="Confirm new password" required style="width:100%">
+<button>Change password</button></form></div>
+<div class="card"><h2>Recovery code</h2><p class="sub" style="margin-top:0">Used on the Forgot password page. A new code cancels the old one.</p>
+<form method="post"><input type="hidden" name="action" value="code">
+<input type="password" name="current" placeholder="Current password" required style="width:100%">
+<button>Generate new code</button></form></div></div>{% endblock %}
