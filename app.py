@@ -8,6 +8,10 @@ Login password: set ADMIN_PASSWORD env var (default: admin123 - change it!)
 import base64
 import calendar
 import os
+import secrets
+import sys
+import time
+from getpass import getpass
 from datetime import date, datetime
 from pathlib import Path
 from threading import Lock
@@ -18,6 +22,7 @@ from flask import (Flask, abort, jsonify, redirect, render_template,
                    request, send_file, session, url_for)
 from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from attendance_cv import (EXCEL_PATH, best_match, db, get_feature,
                            load_known, load_models, log_to_excel, mark)
@@ -106,6 +111,53 @@ def mark_register(name, sid, now):
         return "locked"
 
 
+fails = {}  # ip -> (failed attempts, last time)
+
+
+def locked():
+    n, t = fails.get(request.remote_addr, (0, 0))
+    return n >= 5 and time.time() - t < 300
+
+
+def add_fail():
+    n, _ = fails.get(request.remote_addr, (0, 0))
+    fails[request.remote_addr] = (n + 1, time.time())
+
+
+def admin_row():
+    con = db()
+    con.execute("CREATE TABLE IF NOT EXISTS admin (id INTEGER PRIMARY KEY CHECK (id = 1), "
+                "pw_hash TEXT, rc_hash TEXT)")
+    con.commit()
+    return con.execute("SELECT pw_hash, rc_hash FROM admin WHERE id = 1").fetchone()
+
+
+def check_pw(pw):
+    row = admin_row()
+    return check_password_hash(row[0], pw) if row else pw == PASSWORD
+
+
+def save_admin(pw=None, new_code=False):
+    """Store a new password and/or a new one-time recovery code (returned)."""
+    row = admin_row()
+    pw_hash = generate_password_hash(pw) if pw else (row[0] if row else generate_password_hash(PASSWORD))
+    rc_hash, code = (row[1] if row else None), None
+    if new_code:
+        code = "-".join(secrets.token_hex(2).upper() for _ in range(3))
+        rc_hash = generate_password_hash(code)
+    con = db()
+    con.execute("INSERT OR REPLACE INTO admin VALUES (1, ?, ?)", (pw_hash, rc_hash))
+    con.commit()
+    return code
+
+
+def pw_error(new, confirm):
+    if len(new) < 8:
+        return "Use at least 8 characters."
+    if new != confirm:
+        return "The two passwords don't match."
+
+
 def page(template, **ctx):
     return render_template(template, **ctx)
 
@@ -127,7 +179,7 @@ def detect(img):
 
 @app.before_request
 def guard():
-    if request.endpoint not in ("login", "static") and not session.get("ok"):
+    if request.endpoint not in ("login", "forgot", "static") and not session.get("ok"):
         return redirect("/login")
 
 
@@ -135,10 +187,15 @@ def guard():
 def login():
     err = ""
     if request.method == "POST":
-        if request.form.get("pw") == PASSWORD:
+        if locked():
+            err = "Too many attempts. Try again in 5 minutes."
+        elif check_pw(request.form.get("pw", "")):
+            fails.pop(request.remote_addr, None)
             session["ok"] = True
             return redirect("/")
-        err = "Wrong password."
+        else:
+            add_fail()
+            err = "Wrong password."
     return page("login.html", err=err)
 
 
@@ -146,6 +203,43 @@ def login():
 def logout():
     session.clear()
     return redirect("/login")
+
+
+@app.route("/account", methods=["GET", "POST"])
+def account():
+    msg = err = code = None
+    if request.method == "POST":
+        f = request.form
+        if not check_pw(f.get("current", "")):
+            err = "Current password is wrong."
+        elif f.get("action") == "code":
+            code, msg = save_admin(new_code=True), "New recovery code created."
+        else:
+            err = pw_error(f.get("new", ""), f.get("confirm", ""))
+            if not err:
+                code, msg = save_admin(f["new"], new_code=True), "Password changed."
+    return page("account.html", msg=msg, err=err, code=code)
+
+
+@app.route("/forgot", methods=["GET", "POST"])
+def forgot():
+    if session.get("ok"):
+        return redirect("/account")
+    msg = err = code = None
+    if request.method == "POST":
+        f, row = request.form, admin_row()
+        if locked():
+            err = "Too many attempts. Try again in 5 minutes."
+        elif not row or not row[1] or not check_password_hash(
+                row[1], f.get("code", "").strip().upper()):
+            add_fail()
+            err = "Recovery code not recognised."
+        else:
+            err = pw_error(f.get("new", ""), f.get("confirm", ""))
+            if not err:
+                fails.pop(request.remote_addr, None)
+                code, msg = save_admin(f["new"], new_code=True), "Password reset."
+    return page("forgot.html", msg=msg, err=err, code=code)
 
 
 @app.route("/")
@@ -284,4 +378,9 @@ def api_recognize():
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, threaded=True)
+    if sys.argv[1:] == ["reset-password"]:  # emergency reset from this computer
+        new = getpass("New password: ")
+        error = pw_error(new, getpass("Confirm: "))
+        print(error or f"Password reset. New recovery code: {save_admin(new, new_code=True)}")
+    else:
+        app.run(host="127.0.0.1", port=5000, threaded=True)
