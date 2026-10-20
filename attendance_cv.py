@@ -17,26 +17,17 @@ Camera: 0 = laptop webcam. For a phone camera, use an IP-camera app
 like "http://192.168.1.5:8080/video".
 """
 import csv
-import sqlite3
-import sys
-import urllib.request
-from datetime import datetime
-from pathlib import Path
-
-import cv2
-import numpy as np
-import csv
+import os
 import sqlite3
 import sys
 import time
 import urllib.request
 from datetime import datetime
 from pathlib import Path
-from openpyxl import Workbook, load_workbook
-import os
 
 import cv2
 import numpy as np
+from openpyxl import Workbook, load_workbook
 
 CAMERA_SOURCE = 0
 DB_PATH = os.path.join(os.environ.get("DATA_DIR", "."), "attendance_cv.db")
@@ -81,6 +72,7 @@ def open_camera():
 
 
 def db():
+    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(DB_PATH)
     con.execute(
         """CREATE TABLE IF NOT EXISTS students (
@@ -183,8 +175,11 @@ def mark(con, student_id):
         con.commit()
         return True
     except sqlite3.IntegrityError:
+        con.rollback()  # release the lock
         return False  # already marked today
-   EXCEL_PATH = os.path.join(os.environ.get("DATA_DIR", "."), "attendance.xlsx")
+
+
+EXCEL_PATH = os.path.join(os.environ.get("DATA_DIR", "."), "attendance.xlsx")
 
 
 def log_to_excel(name, student_id, now):
@@ -275,6 +270,8 @@ def export():
         w.writerow(["Name", "Student ID", "Date", "Time"])
         w.writerows(rows)
     print(f"Saved {len(rows)} records to {out}")
+
+
 def remove(student_id):
     con = db()
     row = con.execute("SELECT name FROM students WHERE student_id = ?",
@@ -286,6 +283,8 @@ def remove(student_id):
         con.execute(f"DELETE FROM {table} WHERE student_id = ?", (student_id,))
     con.commit()
     print(f"Removed {row[0]} ({student_id}).")
+
+
 def list_students():
     con = db()
     rows = con.execute(
