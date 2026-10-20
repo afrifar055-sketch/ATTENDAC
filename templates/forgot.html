@@ -1,12 +1,15 @@
 {% extends "base.html" %}{% block title %}Forgot password · FaceAttend{% endblock %}
 {% block bare %}<div class="login"><form method="post" class="card">
-<h1>Reset password</h1><p class="sub">Enter your recovery code and choose a new password.</p>
+<h1>Reset password</h1>
 {% if err %}<div class="alert bad">{{ err }}</div>{% endif %}
-{% if code %}<div class="alert ok">{{ msg }}</div><h2>New recovery code</h2><div class="code">{{ code }}</div>
-<p class="sub">Write it down. It is shown only once.</p><a class="btn" href="/login">Go to sign in</a>
-{% else %}<input name="code" placeholder="Recovery code (XXXX-XXXX-XXXX)" required style="width:100%" autofocus>
+{% if msg %}<div class="alert ok">{{ msg }}</div>{% endif %}
+{% if step == "done" %}<a class="btn" href="/login">Go to sign in</a>
+{% elif step == "code" %}<p class="sub">Enter the 6-digit code from your email and choose a new password.</p>
+<input name="code" placeholder="6-digit code" inputmode="numeric" required style="width:100%" autofocus>
 <input type="password" name="new" placeholder="New password (min 8 characters)" required style="width:100%">
 <input type="password" name="confirm" placeholder="Confirm new password" required style="width:100%">
 <button style="width:100%">Reset password</button>
-<p class="sub" style="margin:14px 0 0;text-align:center">No code? On the computer running the app, run <code>python app.py reset-password</code><br><a href="/login">Back to sign in</a></p>
-{% endif %}</form></div>{% endblock %}
+<p style="margin:10px 0 0"><button name="action" value="send" formnovalidate class="btn ghost sm">Send a new code</button></p>
+{% else %}<p class="sub">We will email a 6-digit reset code{% if email %} to <b>{{ email }}</b>{% endif %}.</p>
+<input type="hidden" name="action" value="send"><button style="width:100%">Send code</button>{% endif %}
+<p class="sub" style="margin:14px 0 0;text-align:center"><a href="/login">Back to sign in</a></p></form></div>{% endblock %}

@@ -7,10 +7,12 @@ Login password: set ADMIN_PASSWORD env var (default: admin123 - change it!)
 """
 import base64
 import calendar
+import json
 import os
 import secrets
 import sys
 import time
+import urllib.request
 from getpass import getpass
 from datetime import date, datetime
 from pathlib import Path
@@ -137,18 +139,80 @@ def check_pw(pw):
     return check_password_hash(row[0], pw) if row else pw == PASSWORD
 
 
-def save_admin(pw=None, new_code=False):
-    """Store a new password and/or a new one-time recovery code (returned)."""
-    row = admin_row()
-    pw_hash = generate_password_hash(pw) if pw else (row[0] if row else generate_password_hash(PASSWORD))
-    rc_hash, code = (row[1] if row else None), None
-    if new_code:
-        code = "-".join(secrets.token_hex(2).upper() for _ in range(3))
-        rc_hash = generate_password_hash(code)
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "").strip()
+RESEND_KEY = os.environ.get("RESEND_API_KEY", "").strip()
+MAIL_FROM = os.environ.get("MAIL_FROM", "FaceAttend <onboarding@resend.dev>")
+
+
+def save_password(pw):
     con = db()
-    con.execute("INSERT OR REPLACE INTO admin VALUES (1, ?, ?)", (pw_hash, rc_hash))
+    con.execute("INSERT OR REPLACE INTO admin VALUES (1, ?, NULL)", (generate_password_hash(pw),))
     con.commit()
-    return code
+
+
+def mask_email(e):
+    name, _, host = e.partition("@")
+    return name[:1] + "***@" + host
+
+
+def send_mail(subject, html, verbose=False):
+    """Email ADMIN_EMAIL through Resend's HTTPS API. Returns an error text, or None if sent."""
+    if not (ADMIN_EMAIL and RESEND_KEY):
+        return "Email is not set up (ADMIN_EMAIL or RESEND_API_KEY is missing)."
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=json.dumps({"from": MAIL_FROM, "to": [ADMIN_EMAIL],
+                         "subject": subject, "html": html}).encode(),
+        headers={"Authorization": f"Bearer {RESEND_KEY}",
+                 "Content-Type": "application/json", "User-Agent": "FaceAttend/1.0"})
+    try:
+        urllib.request.urlopen(req, timeout=15)
+    except Exception as e:
+        detail = e.read().decode()[:300] if hasattr(e, "read") else str(e)
+        print("Email error:", detail)
+        return f"Could not send the email. {detail}" if verbose else "Could not send the email."
+
+
+def reset_con():
+    con = db()
+    con.execute("CREATE TABLE IF NOT EXISTS reset (id INTEGER PRIMARY KEY CHECK (id = 1), "
+                "code_hash TEXT, expires REAL, tries INTEGER)")
+    return con
+
+
+def start_reset():
+    """Email a 6-digit code valid for 15 minutes. Returns an error text or None."""
+    con = reset_con()
+    row = con.execute("SELECT expires FROM reset").fetchone()
+    if row and row[0] - 900 > time.time() - 60:
+        return "A code was sent a moment ago. Wait a minute, then try again."
+    code = f"{secrets.randbelow(10 ** 6):06d}"
+    err = send_mail("Your FaceAttend reset code",
+                    f"<p>Your password reset code is:</p><h2>{code}</h2>"
+                    "<p>It expires in 15 minutes. If you didn't ask for it, ignore this email.</p>")
+    if err:
+        return err
+    con.execute("INSERT OR REPLACE INTO reset VALUES (1, ?, ?, 0)",
+                (generate_password_hash(code), time.time() + 900))
+    con.commit()
+
+
+def finish_reset(code, new, confirm):
+    """Check the emailed code and set the new password. Returns an error text or None."""
+    con = reset_con()
+    row = con.execute("SELECT code_hash, expires, tries FROM reset").fetchone()
+    if not row or time.time() > row[1] or row[2] >= 5:
+        return "That code has expired. Send a new one."
+    if not check_password_hash(row[0], code.strip()):
+        con.execute("UPDATE reset SET tries = tries + 1")
+        con.commit()
+        return "Wrong code."
+    err = pw_error(new, confirm)
+    if not err:
+        save_password(new)
+        con.execute("DELETE FROM reset")
+        con.commit()
+    return err
 
 
 def pw_error(new, confirm):
@@ -207,39 +271,47 @@ def logout():
 
 @app.route("/account", methods=["GET", "POST"])
 def account():
-    msg = err = code = None
+    msg = err = None
     if request.method == "POST":
         f = request.form
         if not check_pw(f.get("current", "")):
             err = "Current password is wrong."
-        elif f.get("action") == "code":
-            code, msg = save_admin(new_code=True), "New recovery code created."
+        elif f.get("action") == "test":
+            err = send_mail("FaceAttend test email", "<p>Email is working.</p>", verbose=True)
+            msg = None if err else "Test email sent to " + mask_email(ADMIN_EMAIL) + "."
         else:
             err = pw_error(f.get("new", ""), f.get("confirm", ""))
             if not err:
-                code, msg = save_admin(f["new"], new_code=True), "Password changed."
-    return page("account.html", msg=msg, err=err, code=code)
+                save_password(f["new"])
+                msg = "Password changed."
+    return page("account.html", msg=msg, err=err,
+                email=mask_email(ADMIN_EMAIL) if ADMIN_EMAIL else "")
 
 
 @app.route("/forgot", methods=["GET", "POST"])
 def forgot():
     if session.get("ok"):
         return redirect("/account")
-    msg = err = code = None
+    msg = err = None
+    step = "send"
     if request.method == "POST":
-        f, row = request.form, admin_row()
+        f = request.form
         if locked():
             err = "Too many attempts. Try again in 5 minutes."
-        elif not row or not row[1] or not check_password_hash(
-                row[1], f.get("code", "").strip().upper()):
-            add_fail()
-            err = "Recovery code not recognised."
+        elif f.get("action") == "send":
+            err = start_reset()
+            step = "send" if err else "code"
+            msg = None if err else "Code sent to " + mask_email(ADMIN_EMAIL) + ". It expires in 15 minutes."
         else:
-            err = pw_error(f.get("new", ""), f.get("confirm", ""))
+            step = "code"
+            err = finish_reset(f.get("code", ""), f.get("new", ""), f.get("confirm", ""))
+            if err == "Wrong code.":
+                add_fail()
             if not err:
                 fails.pop(request.remote_addr, None)
-                code, msg = save_admin(f["new"], new_code=True), "Password reset."
-    return page("forgot.html", msg=msg, err=err, code=code)
+                step, msg = "done", "Password reset. You can sign in now."
+    return page("forgot.html", msg=msg, err=err, step=step,
+                email=mask_email(ADMIN_EMAIL) if ADMIN_EMAIL else "")
 
 
 @app.route("/")
@@ -381,6 +453,8 @@ if __name__ == "__main__":
     if sys.argv[1:] == ["reset-password"]:  # emergency reset from this computer
         new = getpass("New password: ")
         error = pw_error(new, getpass("Confirm: "))
-        print(error or f"Password reset. New recovery code: {save_admin(new, new_code=True)}")
+        if not error:
+            save_password(new)
+        print(error or "Password reset. You can sign in now.")
     else:
         app.run(host="127.0.0.1", port=5000, threaded=True)
