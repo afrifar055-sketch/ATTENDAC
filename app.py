@@ -28,7 +28,7 @@ PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 detector, recognizer = load_models(640, 480)
 lock = Lock()  # the models are not thread-safe
 Path("captures").mkdir(exist_ok=True)
-REG_DIR = Path("registers")
+REG_DIR = Path(os.environ.get("DATA_DIR", ".")) / "registers"
 REG_DIR.mkdir(exist_ok=True)
 
 

@@ -33,12 +33,13 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 from openpyxl import Workbook, load_workbook
+import os
 
 import cv2
 import numpy as np
 
 CAMERA_SOURCE = 0
-DB_PATH = "attendance_cv.db"
+DB_PATH = os.path.join(os.environ.get("DATA_DIR", "."), "attendance_cv.db")
 MODELS_DIR = Path("models")
 SAMPLES_PER_ENROLL = 3        # face captures per enrollment
 MATCH_THRESHOLD = 0.65       # cosine similarity; higher = stricter
@@ -183,7 +184,7 @@ def mark(con, student_id):
         return True
     except sqlite3.IntegrityError:
         return False  # already marked today
-EXCEL_PATH = "attendance.xlsx"
+   EXCEL_PATH = os.path.join(os.environ.get("DATA_DIR", "."), "attendance.xlsx")
 
 
 def log_to_excel(name, student_id, now):
